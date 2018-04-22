@@ -1,0 +1,121 @@
+<!-- 
+  Mostly just a merger of the following d3 blocks:
+  1. Connected Particles - https://bl.ocks.org/mbostock/157333662ef11c151080
+  2. Responding to Resize - https://bl.ocks.org/curran/3a68b0c81991e2e94b19
+--!>
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Dynamic Size Example</title>
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+    <script src="https://d3js.org/d3-color.v1.min.js"></script>
+    <script src="https://d3js.org/d3-interpolate.v1.min.js"></script>
+    <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+    <style>
+
+      /* Make the chart container fill the page using CSS. */
+      #chart {
+        position: fixed;
+        left: 0px;
+        right: 0px;
+        top: 0px;
+        bottom: 0px;
+      }
+    </style>
+  </head>
+  <body>
+
+    <div id="chart">
+      <canvas></canvas>
+    </div>
+
+    <script>
+      var chartDiv = document.getElementById("chart");
+      var canvas = document.querySelector("canvas");
+      var context = canvas.getContext("2d");
+      var width, height, radius, minDistance, maxDistance, minDistance2, maxDistance2;
+
+      function initialize() {
+        width = chartDiv.clientWidth;
+        height = chartDiv.clientHeight;
+        radius = 1.5,
+        minDistance = Math.round((width + height) / 30),
+        maxDistance = minDistance + 30,
+        minDistance2 = minDistance * minDistance,
+        maxDistance2 = maxDistance * maxDistance;
+
+        var tau = 2 * Math.PI,
+            n = Math.min(Math.round(Math.sqrt(width * height) / 6), 150),
+            particles = new Array(n);
+        console.log('Particles:', n);
+        console.log('Minimum distance:', minDistance);
+        console.log('Maximum distance:', maxDistance);
+        var colorScale = d3.scaleSequential(d3.interpolateRdPu).domain([-n/2, n]);
+
+        for (var i = 0; i < n; ++i) {
+          particles[i] = {
+            x: width * Math.random(),
+            y0: height * Math.random(),
+            v: 0.10 * (Math.random() - 0.5)
+          };
+        }
+
+        d3.timer(function(elapsed) {
+          context.clearRect(0, 0, width, height);
+
+          for (var i = 0; i < n; ++i) {
+            for (var j = i + 1; j < n; ++j) {
+              var pi = particles[i],
+                  pj = particles[j],
+                  dx = pi.x - pj.x,
+                  dy = pi.y - pj.y,
+                  d2 = dx * dx + dy * dy;
+              if (d2 < maxDistance2) {
+                context.globalAlpha = d2 > minDistance2 ? (maxDistance2 - d2) / (maxDistance2 - minDistance2) : 1;
+                context.beginPath();
+                context.moveTo(pi.x, pi.y);
+                context.lineTo(pj.x, pj.y);
+                var gradient = context.createLinearGradient(pi.x, pi.y, pj.x, pj.y);
+                gradient.addColorStop("0", colorScale(i));
+                gradient.addColorStop("1", colorScale(j));
+                context.strokeStyle = gradient;
+                context.stroke();
+              }
+            }
+          }
+
+          context.globalAlpha = 1;
+
+          for (var i = 0; i < n; ++i) {
+            var p = particles[i];
+            p.y = p.y0 + elapsed * p.v;
+            if (p.y > height + maxDistance) p.x = width * Math.random(), p.y0 -= height + 2 * maxDistance;
+            else if (p.y < -maxDistance) p.x = width * Math.random(), p.y0 += height + 2 * maxDistance;
+            context.beginPath();
+            context.arc(p.x, p.y, radius, 0, tau);
+            context.fillStyle = colorScale(i);
+            context.fill();
+          }
+        });
+      }
+
+      function redraw(){
+        // Extract the width and height that was computed by CSS.
+        width = chartDiv.clientWidth;
+        height = chartDiv.clientHeight;
+
+        // Use the extracted size to set the size of an SVG element.
+        canvas.height = height;
+        canvas.width = width;
+
+        initialize();
+      }
+
+      // Draw for the first time to initialize.
+      redraw();
+
+      // Redraw based on the new size whenever the browser window is resized.
+      window.addEventListener("resize", redraw);
+    </script>
+
